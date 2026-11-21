@@ -116,6 +116,8 @@ final class TallyApp: NSObject, NSApplicationDelegate, UNUserNotificationCenterD
         statusItem.button?.image = StatusIcon.image(readings: StatusIcon.levels(model: model))
         statusItem.button?.attributedTitle = StatusIcon.title(model: model)
         statusItem.button?.font = KitFontAppKit.number
+        let tip = zip(Service.allCases.filter { model.settings.shows($0) }, StatusIcon.levels(model: model)).map { "\($0.name) \($1.percent.map { Fmt.percent($0) + "%" } ?? "no reading")" }
+        statusItem.button?.toolTip = tip.joined(separator: ", ")
     }
 
     /// `-perf-auto`: five programmatic opens with fake data (no Keychain, no network), timings printed, then quit.

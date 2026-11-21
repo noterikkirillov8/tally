@@ -97,6 +97,13 @@ struct MainView: View {
                 }
                 if !shown.isEmpty, shown.contains(.claude) { KitDivider(); TokensSection(model: model) }
             }
+            .background {
+                // Keyboard: ⌘1 / ⌘2 switch every card to the 5-hour / weekly window.
+                ForEach([(Metric.fiveHour, "1"), (Metric.weekly, "2")], id: \.1) { m, key in
+                    Button("") { withAnimation(KitMotion.list) { for s in shown { model.windowPick[s] = m } } }
+                        .keyboardShortcut(KeyEquivalent(Character(key)), modifiers: .command).opacity(0).allowsHitTesting(false)
+                }
+            }
         }
     }
 }

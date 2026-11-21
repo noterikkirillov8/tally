@@ -78,6 +78,7 @@ struct SettingsView: View {
                     Button(copied ? "Copied" : "Set up") {
                         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(ClaudeFile.helper, forType: .string)
                         copied = true
+                        Task { try? await Task.sleep(for: .seconds(2)); copied = false }
                     }.buttonStyle(.kitSecondary)
                 }
             }

@@ -29,6 +29,12 @@ struct TallyTests {
         let next = end.addingTimeInterval(18000)
         check(read(80, 301, reset: next) == [.five80] && state.update(.fiveHour, reading: nil, now: next).isEmpty, "new window rearms thresholds; exactly 80% does not earn a reset alert")
         state = LimitAlertState()
+        _ = read(90, 0)
+        check(state.update(.fiveHour, reading: nil, now: end.addingTimeInterval(901)).isEmpty && state.update(.fiveHour, reading: nil, now: end.addingTimeInterval(902)).isEmpty, "a reset found more than 15 minutes late does not alert")
+        state = LimitAlertState()
+        _ = read(90, 0)
+        check(state.update(.fiveHour, reading: nil, now: end.addingTimeInterval(900)) == [.reset], "a reset found within 15 minutes still alerts")
+        state = LimitAlertState()
         check(read(96, 0, .weekly) == [.weekly80, .weekly95] && read(100, 1, .weekly).isEmpty, "weekly jump crosses both thresholds once")
         check(read(96, 301, .weekly, reset: next) == [.weekly80, .weekly95], "weekly rollover rearms both without a reset alert")
         state = LimitAlertState()
@@ -82,7 +88,7 @@ struct TallyTests {
         check(ClaudeParser.token(fromCredentials: Data(cred.utf8), now: now).token == "t", "token valid")
         check(ClaudeParser.token(fromCredentials: Data(cred.utf8), now: now.addingTimeInterval(120)).expired, "token expired")
 
-        let sl = #"{"rate_limits":{"five_hour":{"used_percentage":2,"resets_at":1795085400},"seven_day":{"used_percentage":19,"resets_at":1795536000}}}"#
+        let sl = #"{"rate_limits":{"five_hour":{"used_percentage":2,"resets_at":1795180000},"seven_day":{"used_percentage":19,"resets_at":1795536000}}}"#
         let slu = ClaudeParser.parseStatusLine(Data(sl.utf8), readAt: now)!
         let defaults = UserDefaults(suiteName: "Tally.tests.claudeSetup")!
         let model = TallyModel(settings: Settings(defaults: defaults, qa: true), defaults: defaults, live: false)
@@ -134,6 +140,10 @@ struct TallyTests {
         check(Staleness(age: 900) == .fresh && Staleness(age: 901) == .stale("as of 15 min ago"), "15-minute boundary")
         check(Staleness(age: 604800) == .stale("as of 7 d ago") && Staleness(age: 604801).label == "No recent reading", "seven-day boundary")
         check(x.menuPercent(.fiveHour, now: x.readAt) == 24, "no 5h window falls back to weekly")
+        check(Fmt.projected(99.6) == "99" && Fmt.projected(99.4) == "99" && Fmt.projected(100) == "100" && Fmt.projected(45.5) == "46", "projection never rounds up to 100")
+        check(Fmt.forecast(.finishes(99.7), readAt: now, reset: now.addingTimeInterval(3600)) == "At this pace: about 99% at reset", "forecast says 99% for 99.7")
+        let ending = ServiceUsage(fiveHour: UsageWindow(percent: 97, resetsAt: now.addingTimeInterval(120)), readAt: now)
+        check(ending.staleness(now: now.addingTimeInterval(119)) == .fresh && ending.staleness(now: now.addingTimeInterval(120)) == .stale("Reset since the last reading") && ending.isStale(now: now.addingTimeInterval(300)), "a reading whose window has reset is stale at once")
 
         // Today maths (Bangkok midnight = 17:00Z)
         let reset1 = now.addingTimeInterval(4 * 86400)

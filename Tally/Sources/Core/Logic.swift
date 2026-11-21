@@ -42,7 +42,8 @@ struct LimitAlertState: Codable, Equatable {
     mutating func update(_ metric: Metric, reading: Reading?, now: Date) -> [LimitAlert] {
         var due: [LimitAlert] = []
         if let end = resetsAt, now >= end {
-            if metric == .fiveHour && peak > 80 { due.append(.reset) }
+            // A reset noticed long after it happened (app closed, Mac asleep) is old news: no alert.
+            if metric == .fiveHour && peak > 80 && now.timeIntervalSince(end) <= 900 { due.append(.reset) }
             peak = 0
             lastRead = end
             resetsAt = nil
@@ -70,7 +71,12 @@ struct ServiceUsage: Equatable, Sendable, Codable {
     var extras: [String: UsageWindow] = [:]   // per-model weekly limits, e.g. "Sonnet"
     var readAt: Date                          // when the numbers were true (event time or fetch time)
 
-    func staleness(now: Date) -> Staleness { Staleness(age: now.timeIntervalSince(readAt)) }
+    /// A window whose reset time has passed describes the old window, whatever the reading's age (a status line file can lag the provider).
+    func staleness(now: Date) -> Staleness {
+        let age = Staleness(age: now.timeIntervalSince(readAt))
+        let reset = [fiveHour, weekly].contains { $0?.resetsAt.map { $0 <= now } == true }
+        return age == .fresh && reset ? .stale("Reset since the last reading") : age
+    }
     func isStale(now: Date) -> Bool { staleness(now: now) != .fresh }
 
     /// The number for the menu bar, or nil when it is expired or missing. A plan without a
@@ -319,6 +325,9 @@ enum Pace {
 enum Fmt {
     static func percent(_ p: Double) -> String { "\(Int(p.rounded()))" }
 
+    /// A projection below 100 never rounds up to "100".
+    static func projected(_ p: Double) -> String { p < 100 ? "\(min(99, Int(p.rounded())))" : "100" }
+
     static func remaining(_ seconds: TimeInterval) -> String {
         let m = max(0, Int(seconds / 60))
         if m >= 1440 { return "\(m / 1440)d \((m % 1440) / 60)h" }
@@ -346,7 +355,7 @@ enum Fmt {
         switch r {
         case .gathering: return "Pace shows after a few readings"
         case .reaches(let d): return "At this pace you reach 100% around \(clock(d, now: now, calendar: calendar))"
-        case .finishes(let p): return "On pace to finish at \(percent(p))%"
+        case .finishes(let p): return "On pace to finish at \(projected(p))%"
         }
     }
 
@@ -355,7 +364,7 @@ enum Fmt {
     static func forecast(_ result: Pace.Result, readAt: Date, reset: Date, calendar: Calendar = .current) -> String? {
         switch result {
         case .gathering: return nil
-        case .finishes(let percent): return "At this pace: about \(self.percent(percent))% at reset"
+        case .finishes(let percent): return "At this pace: about \(projected(percent))% at reset"
         case .reaches(let time):
             if time == readAt { return "Limit reached before reset" }
             let lead = reset.timeIntervalSince(time)

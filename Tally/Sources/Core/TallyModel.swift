@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import QuartzCore
@@ -80,6 +81,10 @@ final class TallyModel {
         timer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        // The timer does not catch up at once after sleep: refresh on wake so the icon never shows pre-sleep numbers as fresh.
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
     }
 
     private func tick() {
@@ -107,6 +112,7 @@ final class TallyModel {
     /// Default Claude route: the status line file, read off the main thread. Never touches the Keychain or the network.
     func readClaudeFile() {
         guard live, settings.showClaude, !settings.liveClaude else { return }
+        watchClaudeFile()   // a changed path is watched at once, not on the next tick
         let path = settings.claudeFilePath
         Task {
             let usage = await Task.detached { ClaudeFile.read(path: path) }.value
