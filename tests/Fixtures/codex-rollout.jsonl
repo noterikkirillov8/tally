@@ -1,0 +1,5 @@
+{"timestamp":"2026-11-19T08:40:00.000Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"limit_id":"codex","primary":{"used_percent":20.0,"window_minutes":300,"resets_at":1795100000},"secondary":{"used_percent":22.0,"window_minutes":10080,"resets_at":1795567621}}}}
+{"timestamp":"2026-11-19T08:41:00.000Z","type":"event_msg","payload":{"type":"agent_message","message":"mentions rate_limits in text"}}
+{"timestamp":"2026-11-19T08:44:00.000Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"limit_id":"codex_other","primary":{"used_percent":99.0,"window_minutes":300,"resets_at":1795100000},"secondary":null}}}
+{"timestamp":"2026-11-19T08:46:42.771Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"limit_id":"codex","limit_name":null,"primary":{"used_percent":24.0,"window_minutes":10080,"resets_at":1795567621},"secondary":null,"credits":{"has_credits":false,"unlimited":false,"balance":"0"}}}}
+{"timestamp":"2026-11-19T08:47:00.000Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":null}}
